@@ -154,13 +154,17 @@
                 <p>Tu diagnóstico indica un perfil de <span id="result-profile-inline" class="text-[#fdfdfd] underline font-bold">PERFIL</span>.</p>
             </div>
 
-            <div class="space-y-3">
-                <input id="email-input" type="email" placeholder="E-MAIL" class="w-full bg-black/40 border border-zinc-800 p-4 text-[10px] tracking-widest focus:accent-border outline-none uppercase transition-all">
-                <button onclick="app.showRoadmap()" id="submit-btn" class="btn-primary w-full py-4 font-black text-xs tracking-[0.2em] uppercase flex items-center justify-center gap-2">
-                    Ver Hoja de Ruta
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+            <form id="email-form" class="space-y-3" action="https://formspree.io/f/mwvrblpq" method="POST">
+                <input id="email-input" name="email" type="email" required placeholder="E-MAIL" class="w-full bg-black/40 border border-zinc-800 p-4 text-[10px] tracking-widest focus:accent-border outline-none uppercase transition-all">
+                <input type="hidden" id="profile-input" name="profile" value="">
+                
+                <button type="submit" id="submit-btn" class="btn-primary w-full py-4 font-black text-xs tracking-[0.2em] uppercase flex items-center justify-center gap-2">
+                    <span id="submit-text">Ver Hoja de Ruta</span>
+                    <svg id="submit-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                    <svg id="submit-loading" class="hidden animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a10 10 0 0 1 10 10"></path></svg>
                 </button>
-            </div>
+                <div id="submit-status" class="hidden text-center text-[10px] uppercase font-bold tracking-widest mt-2"></div>
+            </form>
         </section>
 
         <!-- Pantalla Hoja de Ruta -->
@@ -346,6 +350,60 @@
                 this.showStep('step-thank-you');
             },
 
+            setupForm() {
+                const form = document.getElementById('email-form');
+                if (!form) return;
+
+                form.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    
+                    const submitBtn = document.getElementById('submit-btn');
+                    const text = document.getElementById('submit-text');
+                    const icon = document.getElementById('submit-icon');
+                    const loading = document.getElementById('submit-loading');
+                    const status = document.getElementById('submit-status');
+                    
+                    // Asegurar que el input oculto tiene el perfil
+                    document.getElementById('profile-input').value = this.resultProfile;
+
+                    // Loading state
+                    submitBtn.disabled = true;
+                    submitBtn.classList.add('opacity-70', 'cursor-not-allowed');
+                    text.innerText = 'PROCESANDO...';
+                    icon.classList.add('hidden');
+                    loading.classList.remove('hidden');
+                    status.classList.add('hidden');
+
+                    try {
+                        const response = await fetch(e.target.action, {
+                            method: form.method,
+                            body: new FormData(form),
+                            headers: {
+                                'Accept': 'application/json'
+                            }
+                        });
+                        
+                        if (response.ok) {
+                            form.reset();
+                            this.showRoadmap();
+                        } else {
+                            throw new Error('Error al enviar');
+                        }
+                    } catch (error) {
+                        status.innerText = 'Error de conexión. Intenta de nuevo.';
+                        status.classList.remove('hidden', 'text-green-500');
+                        status.classList.add('text-red-500');
+                        
+                        // Recupear botón
+                        submitBtn.disabled = false;
+                        submitBtn.classList.remove('opacity-70', 'cursor-not-allowed');
+                        text.innerText = 'Ver Hoja de Ruta';
+                        icon.classList.remove('hidden');
+                        loading.classList.add('hidden');
+                    }
+                });
+            },
+
             reset() {
                 this.currentQuestion = 0;
                 this.scores = [];
@@ -394,7 +452,10 @@
             }
             animate();
         }
-        window.onload = initCanvas;
+        window.onload = () => {
+            initCanvas();
+            app.setupForm();
+        };
     </script>
 </body>
 </html>
